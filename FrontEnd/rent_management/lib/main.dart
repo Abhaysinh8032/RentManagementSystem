@@ -18,23 +18,26 @@ class RentalApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final secureStorage = SecureStorageService();
-    final apiClient = ApiClient();
-    final authRepository = AuthRepository(
-      apiClient: apiClient,
-      secureStorage: secureStorage,
-    );
+    final apiClient = ApiClient(secureStorage: secureStorage);
+    final authRepository = AuthRepository(apiClient: apiClient, secureStorage: secureStorage);
 
-    return BlocProvider(
-      create: (_) => AuthBloc(authRepository: authRepository),
-      child: MaterialApp(
-        title: 'Rental Management System',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
-        initialRoute: '/signin',
-        routes: {
-          '/signin': (_) => const SignInScreen(),
-          '/home': (_) => const HomeScreen(),
-        },
+    return RepositoryProvider<ApiClient>.value(
+      // Shared everywhere below so every feature's repository (property, rental,
+      // billing, admin) reuses this single Dio instance and its JWT interceptor,
+      // instead of each screen constructing its own.
+      value: apiClient,
+      child: BlocProvider(
+        create: (_) => AuthBloc(authRepository: authRepository),
+        child: MaterialApp(
+          title: 'Rental Management System',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
+          initialRoute: '/signin',
+          routes: {
+            '/signin': (_) => const SignInScreen(),
+            '/home': (_) => const HomeScreen(),
+          },
+        ),
       ),
     );
   }

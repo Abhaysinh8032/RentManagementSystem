@@ -9,4 +9,28 @@ class ApiEndpoints {
 
   static const String register = '/auth/register';
   static const String login = '/auth/login';
+
+  static const String properties = '/properties';
+  static String propertyById(int id) => '/properties/$id';
+  static const String adminProperties = '/admin/properties';
+  static String adminPropertyById(int id) => '/admin/properties/$id';
+  static String adminPropertyActive(int id) => '/admin/properties/$id/active';
+
+  static const String rentalRequests = '/rental-requests';
+  static const String myRentalRequests = '/rental-requests/mine';
+  static String rentalRequestById(int id) => '/rental-requests/$id';
+  static String rentalRequestReturnRequest(int id) => '/rental-requests/$id/return-request';
+  static const String adminRentalRequests = '/admin/rental-requests';
+  static String adminRentalRequestDecision(int id) => '/admin/rental-requests/$id/decision';
+  static String adminRentalRequestReturnDecision(int id) => '/admin/rental-requests/$id/return-decision';
+
+  static const String myBills = '/bills/mine';
+  static String billsByRentalRequest(int rentalRequestId) => '/rental-requests/$rentalRequestId/bills';
+  static String billClaimPayment(int billId) => '/bills/$billId/claim-payment';
+  static String adminBillVerify(int billId) => '/admin/bills/$billId/verify';
+  static String adminBillRefund(int billId) => '/admin/bills/$billId/refund';
+
+  static const String adminUsersPending = '/admin/users/pending';
+  static const String adminUsers = '/admin/users';
+  static String adminUserApprove(int userId) => '/admin/users/$userId/approve';
 }

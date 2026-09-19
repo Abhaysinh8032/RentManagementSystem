@@ -1,27 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../admin/presentation/admin_pending_users_screen.dart';
+import '../../admin/presentation/admin_properties_screen.dart';
+import '../../admin/presentation/admin_rental_requests_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../profile/presentation/profile_screen.dart';
+import '../../property/presentation/property_list_screen.dart';
+import '../../rental/presentation/my_rentals_screen.dart';
 
-/// Named `HomeScreen` deliberately, not `DashboardScreen` or `PropertyListScreen`:
-/// it's a generic authenticated landing spot for sprint 1. Once role-based content
-/// exists, this becomes the screen that shows a property browse list for CUSTOMER
-/// and a revenue dashboard for ADMIN - keeping the route name stable now avoids
-/// renaming '/home' everywhere later.
-class HomeScreen extends StatelessWidget {
+/// This is now the real role-based landing screen: a bottom-nav shell that
+/// shows property browsing + "My Rentals" for CUSTOMER, or the three admin
+/// work queues for ADMIN. Kept the name `HomeScreen` and the '/home' route
+/// stable, exactly as planned when this was still a placeholder.
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _tabIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AuthBloc>().state;
     final loginResult = state is SignInSuccess ? state.result : null;
+    final isAdmin = loginResult?.role == 'ADMIN';
     final isPending = loginResult?.status == 'PENDING_APPROVAL';
+
+    final tabs = isAdmin
+        ? const [AdminPendingUsersScreen(), AdminPropertiesScreen(), AdminRentalRequestsScreen()]
+        : const [PropertyListScreen(), MyRentalsScreen()];
+
+    final navItems = isAdmin
+        ? const [
+            BottomNavigationBarItem(icon: Icon(Icons.how_to_reg_outlined), label: 'Users'),
+            BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: 'Properties'),
+            BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), label: 'Requests'),
+          ]
+        : const [
+            BottomNavigationBarItem(icon: Icon(Icons.chair_alt_outlined), label: 'Properties'),
+            BottomNavigationBarItem(icon: Icon(Icons.receipt_long_outlined), label: 'My Rentals'),
+          ];
+
+    // Clamp in case the tab count differs between roles and _tabIndex is stale
+    // from a previous build (defensive - shouldn't normally happen since role
+    // doesn't change without a fresh login).
+    final safeIndex = _tabIndex < tabs.length ? _tabIndex : 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home'),
+        title: Text(isAdmin ? 'Admin' : 'Home'),
         actions: [
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
@@ -32,42 +64,34 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Welcome${loginResult != null ? ', ${loginResult.name}' : ''}!',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            if (isPending)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.hourglass_top, color: Colors.orange),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Your account is awaiting admin approval. Some features are locked until then.',
-                      ),
+      body: Column(
+        children: [
+          if (!isAdmin && isPending)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Colors.amber.shade100,
+              child: const Row(
+                children: [
+                  Icon(Icons.hourglass_top, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Your account is awaiting admin approval. You can browse, but requesting a rental needs approval first.',
+                      style: TextStyle(fontSize: 13),
                     ),
-                  ],
-                ),
-              )
-            else
-              Text(
-                'Browse and request properties from here.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+                  ),
+                ],
               ),
-          ],
-        ),
+            ),
+          Expanded(child: IndexedStack(index: safeIndex, children: tabs)),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: safeIndex,
+        onTap: (i) => setState(() => _tabIndex = i),
+        type: BottomNavigationBarType.fixed,
+        items: navItems,
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/navigation/route_observer.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../property/data/property_model.dart';
@@ -14,7 +15,7 @@ class AdminPropertiesScreen extends StatefulWidget {
   State<AdminPropertiesScreen> createState() => _AdminPropertiesScreenState();
 }
 
-class _AdminPropertiesScreenState extends State<AdminPropertiesScreen> {
+class _AdminPropertiesScreenState extends State<AdminPropertiesScreen> with RouteAware {
   late final PropertyRepository _repository;
   late Future<List<PropertyModel>> _future;
 
@@ -24,6 +25,21 @@ class _AdminPropertiesScreenState extends State<AdminPropertiesScreen> {
     _repository = PropertyRepository(apiClient: context.read<ApiClient>());
     _future = _repository.listAllForAdmin();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    appRouteObserver.subscribe(this, ModalRoute.of(context) as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    appRouteObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() => _refresh();
 
   Future<void> _refresh() async {
     setState(() => _future = _repository.listAllForAdmin());

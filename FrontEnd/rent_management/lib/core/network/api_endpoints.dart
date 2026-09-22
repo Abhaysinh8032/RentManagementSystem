@@ -33,4 +33,7 @@ class ApiEndpoints {
   static const String adminUsersPending = '/admin/users/pending';
   static const String adminUsers = '/admin/users';
   static String adminUserApprove(int userId) => '/admin/users/$userId/approve';
+
+  static const String adminUploadPropertyImage = '/admin/uploads/property-image';
+  static const String uploadPaymentProofImage = '/uploads/payment-proof-image';
 }

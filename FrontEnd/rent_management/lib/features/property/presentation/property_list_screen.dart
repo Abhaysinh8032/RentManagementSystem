@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/navigation/route_observer.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/property_model.dart';
@@ -14,7 +15,7 @@ class PropertyListScreen extends StatefulWidget {
   State<PropertyListScreen> createState() => _PropertyListScreenState();
 }
 
-class _PropertyListScreenState extends State<PropertyListScreen> {
+class _PropertyListScreenState extends State<PropertyListScreen> with RouteAware {
   late final PropertyRepository _repository;
   late Future<List<PropertyModel>> _future;
 
@@ -24,6 +25,23 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
     _repository = PropertyRepository(apiClient: context.read<ApiClient>());
     _future = _repository.listActive();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    appRouteObserver.subscribe(this, ModalRoute.of(context) as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    appRouteObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  // Fires when a screen pushed on top of this one (e.g. property detail) is
+  // popped and this tab becomes visible again - not just on manual pull-to-refresh.
+  @override
+  void didPopNext() => _refresh();
 
   Future<void> _refresh() async {
     setState(() => _future = _repository.listActive());

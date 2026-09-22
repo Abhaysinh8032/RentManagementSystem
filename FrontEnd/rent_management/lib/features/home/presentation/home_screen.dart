@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../admin/presentation/admin_pending_users_screen.dart';
+//import '../../admin/presentation/admin_pending_users_screen.dart';
 import '../../admin/presentation/admin_properties_screen.dart';
 import '../../admin/presentation/admin_rental_requests_screen.dart';
+import '../../admin/presentation/admin_users_screen.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../profile/presentation/profile_screen.dart';
@@ -32,7 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final isPending = loginResult?.status == 'PENDING_APPROVAL';
 
     final tabs = isAdmin
-        ? const [AdminPendingUsersScreen(), AdminPropertiesScreen(), AdminRentalRequestsScreen()]
+//        ? const [AdminPendingUsersScreen(), AdminPropertiesScreen(), AdminRentalRequestsScreen()]
+        ? const [AdminUsersScreen(), AdminPropertiesScreen(), AdminRentalRequestsScreen()]
         : const [PropertyListScreen(), MyRentalsScreen()];
 
     final navItems = isAdmin

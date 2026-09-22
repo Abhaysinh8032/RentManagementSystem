@@ -7,6 +7,7 @@ import com.abhay.inat.rentManagementSystem.common.enums.UserStatus;
 import com.abhay.inat.rentManagementSystem.common.exception.InsufficientStockException;
 import com.abhay.inat.rentManagementSystem.common.exception.InvalidStateException;
 import com.abhay.inat.rentManagementSystem.common.exception.ResourceNotFoundException;
+import com.abhay.inat.rentManagementSystem.notification.FcmService;
 import com.abhay.inat.rentManagementSystem.property.Property;
 import com.abhay.inat.rentManagementSystem.property.PropertyRepository;
 import com.abhay.inat.rentManagementSystem.rental.dto.CreateRentalRequest;
@@ -33,6 +34,7 @@ public class RentalServiceImpl implements RentalService {
     private final PropertyRepository propertyRepository;
     private final UserRepository userRepository;
     private final BillingService billingService;
+    private final FcmService fcmService;
 
     @Override
     @Transactional
@@ -146,6 +148,14 @@ public class RentalServiceImpl implements RentalService {
         rentalRequest.setDecidedAt(Instant.now());
 
         rentalRequest = rentalRequestRepository.save(rentalRequest);
+
+        fcmService.notifyUser(
+                rentalRequest.getUserId(),
+                request.isApprove() ? "Rental Request Approved" : "Rental Request Rejected",
+                request.isApprove()
+                        ? "Your rental request has been approved."
+                        : "Your rental request was not approved.");
+
         return toResponse(rentalRequest, true, null);
     }
 
@@ -199,6 +209,14 @@ public class RentalServiceImpl implements RentalService {
         rentalRequest.setReturnNote(request.getAdminNote());
 
         rentalRequest = rentalRequestRepository.save(rentalRequest);
+
+        fcmService.notifyUser(
+                rentalRequest.getUserId(),
+                request.isApprove() ? "Return Verified" : "Return Not Confirmed",
+                request.isApprove()
+                        ? "Your return has been verified" + (request.isDamaged() ? " (marked damaged)." : " in good condition.")
+                        : "The admin could not confirm your return - please check the note on your request.");
+
         return toResponse(rentalRequest, true, null);
     }
 

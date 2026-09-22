@@ -9,6 +9,7 @@ import com.abhay.inat.rentManagementSystem.common.enums.BillType;
 import com.abhay.inat.rentManagementSystem.common.enums.RentalStatus;
 import com.abhay.inat.rentManagementSystem.common.exception.InvalidStateException;
 import com.abhay.inat.rentManagementSystem.common.exception.ResourceNotFoundException;
+import com.abhay.inat.rentManagementSystem.notification.FcmService;
 import com.abhay.inat.rentManagementSystem.rental.RentalRequest;
 import com.abhay.inat.rentManagementSystem.rental.RentalRequestRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class BillingServiceImpl implements BillingService {
     // on BillingService in the other direction (to generate bills) - both are
     // one-directional at the method level, just pointing at each other's package.
     private final RentalRequestRepository rentalRequestRepository;
+    private final FcmService fcmService;
 
     @Override
     @Transactional
@@ -116,7 +118,18 @@ public class BillingServiceImpl implements BillingService {
         bill.setAdminNote(request.getAdminNote());
         bill.setVerifiedAt(Instant.now());
 
-        return toResponse(billRepository.save(bill));
+        Bill saved = billRepository.save(bill);
+
+        RentalRequest rentalRequest = findRentalRequestOrThrow(saved.getRentalRequestId());
+        String billLabel = saved.getBillType() == BillType.RENT ? "Rent" : "Deposit";
+        fcmService.notifyUser(
+                rentalRequest.getUserId(),
+                request.isApprove() ? billLabel + " Payment Verified" : billLabel + " Payment Claim Rejected",
+                request.isApprove()
+                        ? "Your " + billLabel.toLowerCase() + " payment has been verified."
+                        : "Your " + billLabel.toLowerCase() + " payment claim could not be verified - please check and resubmit.");
+
+        return toResponse(saved);
     }
 
     @Override
@@ -143,7 +156,14 @@ public class BillingServiceImpl implements BillingService {
         bill.setAdminNote(request.getAdminNote());
         bill.setRefundedAt(Instant.now());
 
-        return toResponse(billRepository.save(bill));
+        Bill saved = billRepository.save(bill);
+
+        fcmService.notifyUser(
+                rentalRequest.getUserId(),
+                "Deposit Refunded",
+                "Your security deposit has been refunded.");
+
+        return toResponse(saved);
     }
 
     private Bill findBillOrThrow(Long id) {

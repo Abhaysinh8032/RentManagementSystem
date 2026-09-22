@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'core/navigation/route_observer.dart';
 import 'core/network/api_client.dart';
 import 'core/storage/secure_storage_service.dart';
 import 'features/auth/data/auth_repository.dart';
@@ -32,6 +33,7 @@ class RentalApp extends StatelessWidget {
           title: 'Rental Management System',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
+          navigatorObservers: [appRouteObserver],
           initialRoute: '/signin',
           routes: {
             '/signin': (_) => const SignInScreen(),

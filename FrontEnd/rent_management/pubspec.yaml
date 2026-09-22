@@ -38,6 +38,7 @@ dependencies:
   dio: ^5.7.0
   flutter_secure_storage: ^9.2.2
   equatable: ^2.0.5
+  image_picker: ^1.1.2
   
 
 dev_dependencies:

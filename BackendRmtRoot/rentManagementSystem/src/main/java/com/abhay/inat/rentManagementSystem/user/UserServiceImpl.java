@@ -3,6 +3,9 @@ package com.abhay.inat.rentManagementSystem.user;
 import com.abhay.inat.rentManagementSystem.common.enums.UserRole;
 import com.abhay.inat.rentManagementSystem.common.enums.UserStatus;
 import com.abhay.inat.rentManagementSystem.common.exception.DuplicateResourceException;
+import com.abhay.inat.rentManagementSystem.common.exception.InvalidStateException;
+import com.abhay.inat.rentManagementSystem.common.exception.ResourceNotFoundException;
+import com.abhay.inat.rentManagementSystem.notification.FcmService;
 import com.abhay.inat.rentManagementSystem.security.JwtUtil;
 import com.abhay.inat.rentManagementSystem.user.dto.AuthResponse;
 import com.abhay.inat.rentManagementSystem.user.dto.LoginRequest;
@@ -15,6 +18,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -23,6 +27,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
+    private final FcmService fcmService;
 
     @Override
     public UserResponse register(RegisterRequest request) {
@@ -74,6 +79,48 @@ public class UserServiceImpl implements UserService {
                 .role(user.getRole().name())
                 .status(user.getStatus().name())
                 .build();
+    }
+
+    @Override
+    public List<UserResponse> listPendingUsers() {
+        return userRepository.findByStatus(UserStatus.PENDING_APPROVAL).stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    public List<UserResponse> listAllUsers() {
+        return userRepository.findAll().stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    public UserResponse decideApproval(Long userId, boolean approve) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        if (user.getStatus() != UserStatus.PENDING_APPROVAL) {
+            throw new InvalidStateException(
+                    "Only pending users can be approved or rejected (current status: " + user.getStatus() + ")");
+        }
+
+        user.setStatus(approve ? UserStatus.APPROVED : UserStatus.BLOCKED);
+
+        User saved = userRepository.save(user);
+
+        fcmService.notifyUser(
+                saved.getId(),
+                approve ? "Account Approved" : "Account Update",
+                approve
+                        ? "Your account has been approved. You can now request rentals."
+                        : "Your account request was not approved. Contact the admin for details.");
+
+        return toResponse(saved);
+    }
+
+    @Override
+    public void updateFcmToken(Long userId, String fcmToken) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+        user.setFcmToken(fcmToken);
+        userRepository.save(user);
     }
 
     private UserResponse toResponse(User user) {

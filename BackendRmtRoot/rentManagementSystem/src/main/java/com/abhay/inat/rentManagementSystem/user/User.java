@@ -42,4 +42,10 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private UserStatus status;
+
+    // Registered by the app after login via PUT /users/fcm-token. Nullable -
+    // notifications are simply skipped for a user who hasn't registered one
+    // (e.g. hasn't granted notification permission yet, or is mid-onboarding).
+    @Column(name = "fcm_token")
+    private String fcmToken;
 }

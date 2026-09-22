@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/navigation/route_observer.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/rental_model.dart';
@@ -14,7 +15,7 @@ class MyRentalsScreen extends StatefulWidget {
   State<MyRentalsScreen> createState() => _MyRentalsScreenState();
 }
 
-class _MyRentalsScreenState extends State<MyRentalsScreen> {
+class _MyRentalsScreenState extends State<MyRentalsScreen> with RouteAware {
   late final RentalRepository _repository;
   late Future<List<RentalRequestModel>> _future;
 
@@ -24,6 +25,27 @@ class _MyRentalsScreenState extends State<MyRentalsScreen> {
     _repository = RentalRepository(apiClient: context.read<ApiClient>());
     _future = _repository.listMine();
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    appRouteObserver.subscribe(this, ModalRoute.of(context) as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    appRouteObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  // This is what was missing: CreateRentalRequestScreen navigates straight to
+  // RentalDetailScreen on success (pushReplacement), never back through this
+  // screen - so without this hook, a newly created request only ever showed
+  // up after this screen was torn down and rebuilt from scratch (i.e. logout
+  // + login). didPopNext fires the moment the user backs out of the detail
+  // screen and this tab is visible again.
+  @override
+  void didPopNext() => _refresh();
 
   Future<void> _refresh() async {
     setState(() => _future = _repository.listMine());

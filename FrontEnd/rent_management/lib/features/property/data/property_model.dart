@@ -35,4 +35,19 @@ class PropertyModel {
         depositPerUnit: (json['depositPerUnit'] as num).toDouble(),
         active: json['active'] as bool? ?? true,
       );
+
+  // Used for the optimistic toggle on AdminPropertiesScreen - flips `active`
+  // locally without waiting for a full re-fetch.
+  PropertyModel copyWith({bool? active}) => PropertyModel(
+        id: id,
+        name: name,
+        category: category,
+        description: description,
+        imageUrl: imageUrl,
+        totalQuantity: totalQuantity,
+        availableQuantity: availableQuantity,
+        pricePerUnitPerDay: pricePerUnitPerDay,
+        depositPerUnit: depositPerUnit,
+        active: active ?? this.active,
+      );
 }

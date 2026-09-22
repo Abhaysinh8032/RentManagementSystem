@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/widgets/full_screen_image_viewer.dart';
 import '../data/bill_model.dart';
 import '../data/bill_repository.dart';
 import '../data/rental_model.dart';
@@ -296,6 +297,33 @@ class _BillCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(bill.status.replaceAll('_', ' '), style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
             if (bill.paymentReference != null) Text('Ref: ${bill.paymentReference}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+            if (bill.paymentProofUrl != null && bill.paymentProofUrl!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => showFullScreenImage(context, bill.paymentProofUrl!),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.network(
+                        bill.paymentProofUrl!,
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 56,
+                          height: 56,
+                          color: Colors.grey.shade200,
+                          child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 20),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('View payment proof', style: TextStyle(color: Colors.indigo.shade600, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ],
             if (bill.adminNote != null && bill.adminNote!.isNotEmpty)
               Text('Note: ${bill.adminNote}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
             if (canClaim || canVerify || canRefund) ...[

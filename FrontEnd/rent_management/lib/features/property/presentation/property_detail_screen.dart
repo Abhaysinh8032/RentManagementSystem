@@ -6,6 +6,7 @@ import '../../../core/network/api_exception.dart';
 import '../../rental/presentation/create_rental_request_screen.dart';
 import '../data/property_model.dart';
 import '../data/property_repository.dart';
+import 'property_image.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final int propertyId;
@@ -49,13 +50,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
+                PropertyImage(
+                  imageUrl: property.imageUrl,
                   height: 160,
-                  decoration: BoxDecoration(
-                    color: Colors.indigo.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(child: Icon(Icons.chair_alt_rounded, size: 72, color: Colors.indigo)),
+                  borderRadius: BorderRadius.circular(12),
+                  iconSize: 72,
                 ),
                 const SizedBox(height: 20),
                 Text(property.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),

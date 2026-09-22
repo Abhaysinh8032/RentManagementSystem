@@ -7,6 +7,7 @@ import '../../../core/network/api_exception.dart';
 import '../data/property_model.dart';
 import '../data/property_repository.dart';
 import 'property_detail_screen.dart';
+import 'property_image.dart';
 
 class PropertyListScreen extends StatefulWidget {
   const PropertyListScreen({super.key});
@@ -97,15 +98,7 @@ class _PropertyCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: Colors.indigo.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.chair_alt_rounded, color: Colors.indigo, size: 32),
-              ),
+              PropertyImage(imageUrl: property.imageUrl, size: 64),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(

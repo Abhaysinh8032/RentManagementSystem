@@ -113,10 +113,7 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
       // Deliberately not using ApiException here - this hits Supabase Storage
       // directly, not our own backend, so DioException shapes differ.
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Image upload failed - check ImageUploadService has your real Supabase URL/key filled in.'),
-          backgroundColor: Colors.red.shade600,
-        ),
+        SnackBar(content: Text(e.message), backgroundColor: Colors.red.shade600),
       );
       setState(() => _pickedFile = null);
     } finally {

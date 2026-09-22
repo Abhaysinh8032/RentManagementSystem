@@ -35,8 +35,8 @@ public class FirebaseConfig {
             return FirebaseApp.getInstance();
         }
         log.info(credentialsPath);
-//        File file = new File(credentialsPath);
-        File file = new File("E:/Projects2026/rentManagementSystem/rMTRoot/BackendRmtRoot/rentManagementSystem/src/main/resources/firebase-service-account.json");
+        File file = new File(credentialsPath);
+//        File file = new File("E:/Projects2026/rentManagementSystem/rMTRoot/BackendRmtRoot/rentManagementSystem/src/main/resources/firebase-service-account.json");
         if (!file.exists()) {
             log.warn("Firebase credentials file not found at '{}' - push notifications are disabled until this is configured. See README.", credentialsPath);
             return null;

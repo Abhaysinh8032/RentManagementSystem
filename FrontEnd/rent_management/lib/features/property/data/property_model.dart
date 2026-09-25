@@ -3,7 +3,7 @@ class PropertyModel {
   final String name;
   final String? category;
   final String? description;
-  final String? imageUrl;
+  final List<String> imageUrls;
   final int totalQuantity;
   final int availableQuantity;
   final double pricePerUnitPerDay;
@@ -15,7 +15,7 @@ class PropertyModel {
     required this.name,
     this.category,
     this.description,
-    this.imageUrl,
+    required this.imageUrls,
     required this.totalQuantity,
     required this.availableQuantity,
     required this.pricePerUnitPerDay,
@@ -24,30 +24,34 @@ class PropertyModel {
   });
 
   factory PropertyModel.fromJson(Map<String, dynamic> json) => PropertyModel(
-        id: json['id'] as int,
-        name: json['name'] as String,
-        category: json['category'] as String?,
-        description: json['description'] as String?,
-        imageUrl: json['imageUrl'] as String?,
-        totalQuantity: json['totalQuantity'] as int,
-        availableQuantity: json['availableQuantity'] as int,
-        pricePerUnitPerDay: (json['pricePerUnitPerDay'] as num).toDouble(),
-        depositPerUnit: (json['depositPerUnit'] as num).toDouble(),
-        active: json['active'] as bool? ?? true,
-      );
+    id: json['id'] as int,
+    name: json['name'] as String,
+    category: json['category'] as String?,
+    description: json['description'] as String?,
+    imageUrls: ((json['imageUrls'] as List?) ?? [])
+        .map((e) => e as String)
+        .toList(),
+    totalQuantity: json['totalQuantity'] as int,
+    availableQuantity: json['availableQuantity'] as int,
+    pricePerUnitPerDay: (json['pricePerUnitPerDay'] as num).toDouble(),
+    depositPerUnit: (json['depositPerUnit'] as num).toDouble(),
+    active: json['active'] as bool? ?? true,
+  );
+
+  String? get coverImageUrl => null;
 
   // Used for the optimistic toggle on AdminPropertiesScreen - flips `active`
   // locally without waiting for a full re-fetch.
   PropertyModel copyWith({bool? active}) => PropertyModel(
-        id: id,
-        name: name,
-        category: category,
-        description: description,
-        imageUrl: imageUrl,
-        totalQuantity: totalQuantity,
-        availableQuantity: availableQuantity,
-        pricePerUnitPerDay: pricePerUnitPerDay,
-        depositPerUnit: depositPerUnit,
-        active: active ?? this.active,
-      );
+    id: id,
+    name: name,
+    category: category,
+    description: description,
+    imageUrls: imageUrls,
+    totalQuantity: totalQuantity,
+    availableQuantity: availableQuantity,
+    pricePerUnitPerDay: pricePerUnitPerDay,
+    depositPerUnit: depositPerUnit,
+    active: active ?? this.active,
+  );
 }

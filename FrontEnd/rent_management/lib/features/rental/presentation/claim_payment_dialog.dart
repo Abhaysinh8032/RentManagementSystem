@@ -7,22 +7,42 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/image_upload_service.dart';
 
+const int _maxClaimImages = 5; // matches backend's @Size(max = 5)
+
 class ClaimPaymentResult {
   final String paymentReference;
-  final String paymentProofUrl;
-  ClaimPaymentResult({required this.paymentReference, required this.paymentProofUrl});
+  final List<String> proofImageUrls;
+  ClaimPaymentResult({required this.paymentReference, required this.proofImageUrls});
 }
 
-Future<ClaimPaymentResult?> showClaimPaymentDialog(BuildContext context, {required String billLabel}) {
+/// Pass [initialReference]/[initialImageUrls] when the bill is already
+/// PAYMENT_CLAIMED and the user is updating it (matches the backend allowing
+/// claimPayment to be called again before it's decided) - leave both null for
+/// a brand-new claim.
+Future<ClaimPaymentResult?> showClaimPaymentDialog(
+  BuildContext context, {
+  required String billLabel,
+  String? initialReference,
+  List<String>? initialImageUrls,
+}) {
   return showDialog<ClaimPaymentResult>(
     context: context,
-    builder: (dialogContext) => _ClaimPaymentDialog(billLabel: billLabel),
+    builder: (dialogContext) => _ClaimPaymentDialog(
+      billLabel: billLabel,
+      initialReference: initialReference,
+      initialImageUrls: initialImageUrls,
+    ),
   );
 }
 
 class _ClaimPaymentDialog extends StatefulWidget {
   final String billLabel;
-  const _ClaimPaymentDialog({required this.billLabel});
+  final String? initialReference;
+  final List<String>? initialImageUrls;
+
+  const _ClaimPaymentDialog({required this.billLabel, this.initialReference, this.initialImageUrls});
+
+  bool get isEditing => initialReference != null || (initialImageUrls?.isNotEmpty ?? false);
 
   @override
   State<_ClaimPaymentDialog> createState() => _ClaimPaymentDialogState();
@@ -30,18 +50,19 @@ class _ClaimPaymentDialog extends StatefulWidget {
 
 class _ClaimPaymentDialogState extends State<_ClaimPaymentDialog> {
   final _formKey = GlobalKey<FormState>();
-  final _referenceController = TextEditingController();
+  late final TextEditingController _referenceController;
   late final ImageUploadService _imageUploadService;
   final ImagePicker _imagePicker = ImagePicker();
 
-  File? _pickedFile;
-  String? _uploadedUrl;
+  late List<String> _imageUrls;
   bool _uploading = false;
 
   @override
   void initState() {
     super.initState();
     _imageUploadService = ImageUploadService(apiClient: context.read<ApiClient>());
+    _referenceController = TextEditingController(text: widget.initialReference ?? '');
+    _imageUrls = List.of(widget.initialImageUrls ?? []);
   }
 
   @override
@@ -74,50 +95,49 @@ class _ClaimPaymentDialogState extends State<_ClaimPaymentDialog> {
 
     // Deliberately NOT passing maxWidth/imageQuality here (unlike the property
     // form's picker call) - a payment screenshot may need to be read for an
-    // exact reference number or amount, so this keeps the picked image at its
-    // original resolution/quality before it even reaches the upload step.
+    // exact reference number or amount, so this keeps every picked image at
+    // its original resolution/quality before it even reaches the upload step.
     final picked = await _imagePicker.pickImage(source: source);
     if (picked == null) return;
 
-    final file = File(picked.path);
-    setState(() {
-      _pickedFile = file;
-      _uploading = true;
-      _uploadedUrl = null;
-    });
+    setState(() => _uploading = true);
 
     try {
-      final url = await _imageUploadService.uploadPaymentProofImage(file);
+      final url = await _imageUploadService.uploadPaymentProofImage(File(picked.path));
       if (!mounted) return;
-      setState(() => _uploadedUrl = url);
+      setState(() => _imageUrls.add(url));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red.shade600),
       );
-      setState(() => _pickedFile = null);
+//      setState(() => _pickedFile = null);
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
   }
 
+  void _removeImage(int index) {
+    setState(() => _imageUrls.removeAt(index));
+  }
+
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    if (_uploadedUrl == null) {
+    if (_imageUrls.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please attach a payment screenshot')),
+        const SnackBar(content: Text('Please attach at least one payment screenshot')),
       );
       return;
     }
     Navigator.of(context).pop(
-      ClaimPaymentResult(paymentReference: _referenceController.text.trim(), paymentProofUrl: _uploadedUrl!),
+      ClaimPaymentResult(paymentReference: _referenceController.text.trim(), proofImageUrls: _imageUrls),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Claim ${widget.billLabel} Payment'),
+      title: Text(widget.isEditing ? 'Update ${widget.billLabel} Claim' : 'Claim ${widget.billLabel} Payment'),
       content: Form(
         key: _formKey,
         child: Column(
@@ -130,40 +150,32 @@ class _ClaimPaymentDialogState extends State<_ClaimPaymentDialog> {
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 12),
-            GestureDetector(
-              onTap: _uploading ? null : _pickAndUpload,
-              child: Container(
-                height: 140,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
-                  image: _pickedFile != null
-                      ? DecorationImage(image: FileImage(_pickedFile!), fit: BoxFit.cover)
-                      : null,
-                ),
-                child: _uploading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _pickedFile == null
-                        ? Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.upload_file_outlined, color: Colors.grey.shade500),
-                              const SizedBox(height: 6),
-                              Text('Attach payment screenshot', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                            ],
-                          )
-                        : (_uploadedUrl != null
-                            ? Align(
-                                alignment: Alignment.topRight,
-                                child: Container(
-                                  margin: const EdgeInsets.all(6),
-                                  padding: const EdgeInsets.all(3),
-                                  decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
-                                  child: const Icon(Icons.check, size: 14, color: Colors.white),
-                                ),
-                              )
-                            : null),
+            Text('Screenshots (${_imageUrls.length}/$_maxClaimImages)', style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 84,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (int i = 0; i < _imageUrls.length; i++) _ImageThumb(url: _imageUrls[i], onRemove: () => _removeImage(i)),
+                  if (_imageUrls.length < _maxClaimImages)
+                    GestureDetector(
+                      onTap: _uploading ? null : _pickAndUpload,
+                      child: Container(
+                        width: 76,
+                        height: 76,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: _uploading
+                            ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                            : Icon(Icons.add_a_photo_outlined, color: Colors.grey.shade500),
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
@@ -173,7 +185,42 @@ class _ClaimPaymentDialogState extends State<_ClaimPaymentDialog> {
         TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
         FilledButton(
           onPressed: _uploading ? null : _submit,
-          child: const Text('Submit'),
+          child: Text(widget.isEditing ? 'Save Changes' : 'Submit'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ImageThumb extends StatelessWidget {
+  final String url;
+  final VoidCallback onRemove;
+  const _ImageThumb({required this.url, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Container(
+          width: 76,
+          height: 76,
+          margin: const EdgeInsets.only(right: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
+          ),
+        ),
+        Positioned(
+          top: 2,
+          right: 10,
+          child: GestureDetector(
+            onTap: onRemove,
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+              child: const Icon(Icons.close, size: 12, color: Colors.white),
+            ),
+          ),
         ),
       ],
     );

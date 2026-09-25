@@ -26,6 +26,7 @@ import java.util.List;
 public class BillingServiceImpl implements BillingService {
 
     private final BillRepository billRepository;
+    private final BillProofImageRepository billProofImageRepository;
     // Read-only dependency on the rental package, purely to check bill ownership
     // and to confirm RETURNED status before a refund. RentalServiceImpl depends
     // on BillingService in the other direction (to generate bills) - both are
@@ -89,17 +90,29 @@ public class BillingServiceImpl implements BillingService {
             throw new AccessDeniedException("This bill does not belong to you");
         }
 
-        if (bill.getStatus() != BillStatus.PENDING_PAYMENT) {
+        // Relaxed from "PENDING_PAYMENT only" so a claim can be UPDATED (new
+        // reference, added/swapped images) any time before the admin actually
+        // decides it. Once it's PAID or REFUNDED, it's settled - no more edits.
+        if (bill.getStatus() != BillStatus.PENDING_PAYMENT && bill.getStatus() != BillStatus.PAYMENT_CLAIMED) {
             throw new InvalidStateException(
-                    "This bill is not awaiting payment (current status: " + bill.getStatus() + ")");
+                    "This bill has already been settled and can no longer be updated (current status: " + bill.getStatus() + ")");
         }
 
         bill.setPaymentReference(request.getPaymentReference());
-        bill.setPaymentProofUrl(request.getPaymentProofUrl());
+//        bill.setPaymentProofUrl(request.getPaymentProofUrl());
         bill.setStatus(BillStatus.PAYMENT_CLAIMED);
         bill.setClaimedAt(Instant.now());
+        Bill saved = billRepository.save(bill);
 
-        return toResponse(billRepository.save(bill));
+        // Full-replace: whatever images are in this request become the
+        // complete set for the claim, not an incremental add.
+        billProofImageRepository.deleteByBillId(billId);
+        List<BillProofImage> images = (List<BillProofImage>) request.getProofImageUrls().stream()
+                .map(url -> BillProofImage.builder().billId(billId).imageUrl(url).build())
+                .toList();
+        billProofImageRepository.saveAll(images);
+
+        return toResponse(saved);
     }
 
     @Override
@@ -177,6 +190,10 @@ public class BillingServiceImpl implements BillingService {
     }
 
     private BillResponse toResponse(Bill b) {
+        List<String> proofImageUrls = billProofImageRepository.findByBillIdOrderByIdAsc(b.getId()).stream()
+                .map(BillProofImage::getImageUrl)
+                .toList();
+
         return BillResponse.builder()
                 .id(b.getId())
                 .rentalRequestId(b.getRentalRequestId())
@@ -184,7 +201,7 @@ public class BillingServiceImpl implements BillingService {
                 .amount(b.getAmount())
                 .status(b.getStatus().name())
                 .paymentReference(b.getPaymentReference())
-                .paymentProofUrl(b.getPaymentProofUrl())
+                .proofImageUrls(proofImageUrls)
                 .claimedAt(b.getClaimedAt())
                 .verifiedAt(b.getVerifiedAt())
                 .refundReference(b.getRefundReference())

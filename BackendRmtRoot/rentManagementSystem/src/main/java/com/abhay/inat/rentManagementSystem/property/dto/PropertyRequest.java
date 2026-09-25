@@ -4,12 +4,14 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 @Setter
@@ -24,7 +26,11 @@ public class PropertyRequest {
 
     private String description;
 
-    private String imageUrl;
+    // Full-replace semantics: whatever list is sent on update becomes the
+    // complete image set - it's not an incremental add. Optional (a property
+    // can have zero images), capped to keep the gallery sane.
+//    @Size(max = 6, message = "A property can have at most 6 images")
+    private List<String> imageUrls;
 
     @NotNull(message = "Total quantity is required")
     @Min(value = 1, message = "Total quantity must be at least 1")

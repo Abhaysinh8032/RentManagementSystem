@@ -10,6 +10,8 @@ import '../../../core/storage/image_upload_service.dart';
 import '../../property/data/property_model.dart';
 import '../../property/data/property_repository.dart';
 
+const int _maxPropertyImages = 6; // matches backend's @Size(max = 6)
+
 /// Pass [existing] to edit, or leave null to create. Both cases share one
 /// form since the fields and validation are identical.
 class AdminPropertyFormScreen extends StatefulWidget {
@@ -17,7 +19,8 @@ class AdminPropertyFormScreen extends StatefulWidget {
   const AdminPropertyFormScreen({super.key, this.existing});
 
   @override
-  State<AdminPropertyFormScreen> createState() => _AdminPropertyFormScreenState();
+  State<AdminPropertyFormScreen> createState() =>
+      _AdminPropertyFormScreenState();
 }
 
 class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
@@ -29,17 +32,13 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _categoryController;
   late final TextEditingController _descriptionController;
-//  late final TextEditingController _imageUrlController;
   late final TextEditingController _totalQuantityController;
   late final TextEditingController _priceController;
   late final TextEditingController _depositController;
 
-  // Replaces the old plain "Image URL" text field. _imageUrl holds either the
-  // existing property's image (when editing) or the freshly uploaded one;
-  // _pickedFile is only used for showing an instant local preview while the
-  // upload is in flight.
-  String? _imageUrl;
-  File? _pickedFile;
+  // Full-replace semantics on submit, matching the backend: this list IS the
+  // complete image set sent with the request, not an incremental diff.
+  late List<String> _imageUrls;
   bool _uploadingImage = false;
 
   bool _submitting = false;
@@ -49,16 +48,24 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
   void initState() {
     super.initState();
     _repository = PropertyRepository(apiClient: context.read<ApiClient>());
-    _imageUploadService = ImageUploadService(apiClient: context.read<ApiClient>());
+    _imageUploadService = ImageUploadService(
+      apiClient: context.read<ApiClient>(),
+    );
     final p = widget.existing;
     _nameController = TextEditingController(text: p?.name ?? '');
     _categoryController = TextEditingController(text: p?.category ?? '');
     _descriptionController = TextEditingController(text: p?.description ?? '');
-//    _imageUrlController = TextEditingController(text: p?.imageUrl ?? '');
-    _totalQuantityController = TextEditingController(text: p?.totalQuantity.toString() ?? '');
-    _priceController = TextEditingController(text: p?.pricePerUnitPerDay.toString() ?? '');
-    _depositController = TextEditingController(text: p?.depositPerUnit.toString() ?? '');
-    _imageUrl = p?.imageUrl;
+    //    _imageUrlController = TextEditingController(text: p?.imageUrl ?? '');
+    _totalQuantityController = TextEditingController(
+      text: p?.totalQuantity.toString() ?? '',
+    );
+    _priceController = TextEditingController(
+      text: p?.pricePerUnitPerDay.toString() ?? '',
+    );
+    _depositController = TextEditingController(
+      text: p?.depositPerUnit.toString() ?? '',
+    );
+    _imageUrls = List.of(p?.imageUrls ?? []);
   }
 
   @override
@@ -66,7 +73,7 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
     _nameController.dispose();
     _categoryController.dispose();
     _descriptionController.dispose();
-//    _imageUrlController.dispose();
+    //    _imageUrlController.dispose();
     _totalQuantityController.dispose();
     _priceController.dispose();
     _depositController.dispose();
@@ -95,30 +102,39 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
     );
     if (source == null) return;
 
-    final picked = await _imagePicker.pickImage(source: source, maxWidth: 1600, imageQuality: 85);
+    final picked = await _imagePicker.pickImage(
+      source: source,
+      maxWidth: 1600,
+      imageQuality: 85,
+    );
     if (picked == null) return;
 
-    final file = File(picked.path);
-    setState(() {
-      _pickedFile = file;
-      _uploadingImage = true;
-    });
+    setState(() => _uploadingImage = true);
 
     try {
-      final uploadedUrl = await _imageUploadService.uploadPropertyImage(file);
+      final uploadedUrl = await _imageUploadService.uploadPropertyImage(
+        File(picked.path),
+      );
       if (!mounted) return;
-      setState(() => _imageUrl = uploadedUrl);
+      setState(() => _imageUrls.add(uploadedUrl));
     } on ApiException catch (e) {
       if (!mounted) return;
       // Deliberately not using ApiException here - this hits Supabase Storage
       // directly, not our own backend, so DioException shapes differ.
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), backgroundColor: Colors.red.shade600),
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.red.shade600,
+        ),
       );
-      setState(() => _pickedFile = null);
+      //      setState(() => _pickedFile = null);
     } finally {
       if (mounted) setState(() => _uploadingImage = false);
     }
+  }
+
+  void _removeImage(int index) {
+    setState(() => _imageUrls.removeAt(index));
   }
 
   Future<void> _submit() async {
@@ -129,8 +145,8 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
       'name': _nameController.text.trim(),
       'category': _categoryController.text.trim(),
       'description': _descriptionController.text.trim(),
-//      'imageUrl': _imageUrlController.text.trim(),
-      'imageUrl': _imageUrl ?? '',
+      //      'imageUrl': _imageUrlController.text.trim(),
+      'imageUrls': _imageUrls,
       'totalQuantity': int.parse(_totalQuantityController.text.trim()),
       'pricePerUnitPerDay': double.parse(_priceController.text.trim()),
       'depositPerUnit': double.parse(_depositController.text.trim()),
@@ -146,7 +162,12 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
       Navigator.of(context).pop(true);
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message), backgroundColor: Colors.red.shade600));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -155,76 +176,110 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isEditing ? 'Edit Property' : 'New Property')),
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Edit Property' : 'New Property'),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            Center(
-              child: GestureDetector(
-                onTap: _uploadingImage ? null : _pickAndUploadImage,
-                child: Container(
-                  width: 160,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    color: Colors.indigo.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    image: _pickedFile != null
-                        ? DecorationImage(image: FileImage(_pickedFile!), fit: BoxFit.cover)
-                        : (_imageUrl != null && _imageUrl!.isNotEmpty)
-                            ? DecorationImage(image: NetworkImage(_imageUrl!), fit: BoxFit.cover)
-                            : null,
-                  ),
-                  child: _uploadingImage
-                      ? const Center(child: CircularProgressIndicator())
-                      : (_pickedFile == null && (_imageUrl == null || _imageUrl!.isEmpty))
-                          ? Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add_a_photo_outlined, size: 32, color: Colors.indigo.shade300),
-                                const SizedBox(height: 6),
-                                Text('Add Photo', style: TextStyle(color: Colors.indigo.shade300, fontSize: 12)),
-                              ],
-                            )
-                          : Align(
-                              alignment: Alignment.bottomRight,
-                              child: Container(
-                                margin: const EdgeInsets.all(6),
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                                child: const Icon(Icons.edit, size: 16, color: Colors.white),
+            Text(
+              'Photos (${_imageUrls.length}/$_maxPropertyImages)',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 96,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (int i = 0; i < _imageUrls.length; i++)
+                    _ImageThumb(
+                      url: _imageUrls[i],
+                      onRemove: () => _removeImage(i),
+                    ),
+                  if (_imageUrls.length < _maxPropertyImages)
+                    GestureDetector(
+                      onTap: _uploadingImage ? null : _pickAndUploadImage,
+                      child: Container(
+                        width: 88,
+                        height: 88,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.indigo.shade100),
+                        ),
+                        child: _uploadingImage
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.add_a_photo_outlined,
+                                    size: 26,
+                                    color: Colors.indigo.shade300,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Add',
+                                    style: TextStyle(
+                                      color: Colors.indigo.shade300,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                ),
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: 20),
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+              decoration: const InputDecoration(
+                labelText: 'Name',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 14),
             TextFormField(
               controller: _categoryController,
-              decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder(), hintText: 'e.g. decor, seating'),
+              decoration: const InputDecoration(
+                labelText: 'Category',
+                border: OutlineInputBorder(),
+                hintText: 'e.g. decor, seating',
+              ),
             ),
             const SizedBox(height: 14),
             TextFormField(
               controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                border: OutlineInputBorder(),
+              ),
               maxLines: 3,
-//            ),
-//            const SizedBox(height: 14),
-//            TextFormField(
-//              controller: _imageUrlController,
-//              decoration: const InputDecoration(labelText: 'Image URL', border: OutlineInputBorder()),
+              //            ),
+              //            const SizedBox(height: 14),
+              //            TextFormField(
+              //              controller: _imageUrlController,
+              //              decoration: const InputDecoration(labelText: 'Image URL', border: OutlineInputBorder()),
             ),
             const SizedBox(height: 14),
             TextFormField(
               controller: _totalQuantityController,
-              decoration: const InputDecoration(labelText: 'Total quantity', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Total quantity',
+                border: OutlineInputBorder(),
+              ),
               keyboardType: TextInputType.number,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Required';
@@ -236,8 +291,13 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
             const SizedBox(height: 14),
             TextFormField(
               controller: _priceController,
-              decoration: const InputDecoration(labelText: 'Price per unit per day (₹)', border: OutlineInputBorder()),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Price per unit per day (₹)',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Required';
                 final n = double.tryParse(v.trim());
@@ -248,8 +308,13 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
             const SizedBox(height: 14),
             TextFormField(
               controller: _depositController,
-              decoration: const InputDecoration(labelText: 'Deposit per unit (₹)', border: OutlineInputBorder()),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Deposit per unit (₹)',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Required';
                 final n = double.tryParse(v.trim());
@@ -266,16 +331,63 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
             ],
             const SizedBox(height: 24),
             FilledButton(
-//              onPressed: _submitting ? null : _submit,
+              //              onPressed: _submitting ? null : _submit,
               onPressed: (_submitting || _uploadingImage) ? null : _submit,
-              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
               child: _submitting
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : Text(_isEditing ? 'Save Changes' : 'Create Property'),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ImageThumb extends StatelessWidget {
+  final String url;
+  final VoidCallback onRemove;
+  const _ImageThumb({required this.url, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Container(
+          width: 88,
+          height: 88,
+          margin: const EdgeInsets.only(right: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
+          ),
+        ),
+        Positioned(
+          top: 2,
+          right: 10,
+          child: GestureDetector(
+            onTap: onRemove,
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: const BoxDecoration(
+                color: Colors.black54,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close, size: 14, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

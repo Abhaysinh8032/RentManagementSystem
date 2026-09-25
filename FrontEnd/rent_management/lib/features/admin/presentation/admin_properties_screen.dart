@@ -157,7 +157,7 @@ class _AdminPropertiesScreenState extends State<AdminPropertiesScreen> with Rout
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
                     onTap: () => _openForm(existing: property),
-                    leading: PropertyImage(imageUrl: property.imageUrl, size: 48),
+                    leading: PropertyImage(imageUrl: property.coverImageUrl, size: 48),
                     title: Text(property.name),
                     subtitle: Text('${property.availableQuantity}/${property.totalQuantity} available • ₹${property.pricePerUnitPerDay.toStringAsFixed(0)}/day'),
                     trailing: isToggling

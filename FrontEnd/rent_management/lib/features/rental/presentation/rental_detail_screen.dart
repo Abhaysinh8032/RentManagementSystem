@@ -55,12 +55,20 @@ class _RentalDetailScreenState extends State<RentalDetailScreen> {
   }
 
   Future<void> _claimPayment(BillModel bill) async {
-    final result = await showClaimPaymentDialog(context, billLabel: bill.billType == 'RENT' ? 'Rent' : 'Deposit');
+    final result = await showClaimPaymentDialog(
+      context,
+      billLabel: bill.billType == 'RENT' ? 'Rent' : 'Deposit',
+      // Pre-fill when this is an update to an already-submitted claim (matches
+      // the backend now allowing claimPayment to be called again before the
+      // admin decides it) - null/empty for a brand-new claim.
+      initialReference: bill.isClaimed ? bill.paymentReference : null,
+      initialImageUrls: bill.isClaimed ? bill.proofImageUrls : null,
+    );
     if (result == null) return;
     await _runAction(() => _billRepository.claimPayment(
           bill.id,
           paymentReference: result.paymentReference,
-          paymentProofUrl: result.paymentProofUrl,
+          proofImageUrls: result.proofImageUrls,
         ));
   }
 
@@ -276,7 +284,9 @@ class _BillCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final canClaim = !isAdmin && bill.isPendingPayment;
+    // Now true for PENDING_PAYMENT (new claim) AND PAYMENT_CLAIMED (edit an
+    // existing one) - matches the backend's relaxed claimPayment guard.
+    final canClaim = !isAdmin && bill.canSubmitOrEditClaim;
     final canVerify = isAdmin && bill.isClaimed;
     final canRefund = isAdmin && bill.isDeposit && bill.isPaid && rentalReturned;
 
@@ -297,29 +307,54 @@ class _BillCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(bill.status.replaceAll('_', ' '), style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
             if (bill.paymentReference != null) Text('Ref: ${bill.paymentReference}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-            if (bill.paymentProofUrl != null && bill.paymentProofUrl!.isNotEmpty) ...[
+            if (bill.proofImageUrls.isNotEmpty) ...[
               const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () => showFullScreenImage(context, bill.paymentProofUrl!),
+              SizedBox(
+                height: 56,
                 child: Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.network(
-                        bill.paymentProofUrl!,
-                        width: 56,
-                        height: 56,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: 56,
-                          height: 56,
-                          color: Colors.grey.shade200,
-                          child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 20),
+                    for (int i = 0; i < bill.proofImageUrls.length && i < 3; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: GestureDetector(
+                          onTap: () => showFullScreenImageGallery(context, bill.proofImageUrls, initialIndex: i),
+                          child: Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: Image.network(
+                                  bill.proofImageUrls[i],
+                                  width: 56,
+                                  height: 56,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Container(
+                                    width: 56,
+                                    height: 56,
+                                    color: Colors.grey.shade200,
+                                    child: Icon(Icons.broken_image_outlined, color: Colors.grey.shade400, size: 20),
+                                  ),
+                                ),
+                              ),
+                              // Show a "+N" overlay on the 3rd thumbnail if there are more beyond it.
+                              if (i == 2 && bill.proofImageUrls.length > 3)
+                                Positioned.fill(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '+${bill.proofImageUrls.length - 3}',
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text('View payment proof', style: TextStyle(color: Colors.indigo.shade600, fontSize: 12, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -333,7 +368,7 @@ class _BillCard extends StatelessWidget {
                 child: Wrap(
                   spacing: 8,
                   children: [
-                    if (canClaim) FilledButton.tonal(onPressed: onClaim, child: const Text('Claim Payment')),
+                    if (canClaim) FilledButton.tonal(onPressed: onClaim, child: Text(bill.isClaimed ? 'Update Claim' : 'Claim Payment')),
                     if (canVerify) FilledButton.tonal(onPressed: onVerify, child: const Text('Verify Payment')),
                     if (canRefund) FilledButton.tonal(onPressed: onRefund, child: const Text('Refund Deposit')),
                   ],

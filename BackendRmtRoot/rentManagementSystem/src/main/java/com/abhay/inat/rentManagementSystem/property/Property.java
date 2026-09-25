@@ -30,8 +30,12 @@ public class Property extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "image_url", columnDefinition = "TEXT")
-    private String imageUrl;
+    // NOTE: the old single "image_url" column stays in the DB (Hibernate's
+    // ddl-auto=update never drops removed columns) but is no longer read or
+    // written anywhere - images now live in the property_images table via
+    // PropertyImage. See README for the optional cleanup SQL.
+    //@Column(name = "image_url", columnDefinition = "TEXT")
+    //private String imageUrl;
 
     @Column(name = "total_quantity", nullable = false)
     private Integer totalQuantity;

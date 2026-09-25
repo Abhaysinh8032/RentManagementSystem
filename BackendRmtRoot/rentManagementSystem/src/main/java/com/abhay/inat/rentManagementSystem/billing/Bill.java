@@ -56,8 +56,8 @@ public class Bill extends BaseEntity {
     @Column(name = "payment_reference", length = 100)
     private String paymentReference;
 
-    @Column(name = "payment_proof_url", columnDefinition = "TEXT")
-    private String paymentProofUrl;
+//    @Column(name = "payment_proof_url", columnDefinition = "TEXT")
+//    private String paymentProofUrl;
 
     @Column(name = "claimed_at")
     private Instant claimedAt;

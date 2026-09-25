@@ -14,11 +14,14 @@ class BillRepository {
   Future<List<BillModel>> listByRentalRequest(int rentalRequestId) =>
       _listFrom(ApiEndpoints.billsByRentalRequest(rentalRequestId));
 
-  Future<BillModel> claimPayment(int billId, {required String paymentReference, required String paymentProofUrl}) async {
+  // Can be called more than once per bill (matches the backend's relaxed
+  // guard) - resubmitting updates the reference and/or the full image set,
+  // right up until the admin actually verifies it.
+  Future<BillModel> claimPayment(int billId, {required String paymentReference, required List<String> proofImageUrls}) async {
     try {
       final res = await apiClient.dio.put(
         ApiEndpoints.billClaimPayment(billId),
-        data: {'paymentReference': paymentReference, 'paymentProofUrl': paymentProofUrl},
+        data: {'paymentReference': paymentReference, 'proofImageUrls': proofImageUrls},
       );
       return BillModel.fromJson(res.data['data'] as Map<String, dynamic>);
     } on DioException catch (e) {

@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 @Builder
@@ -12,7 +13,7 @@ public class PropertyResponse {
     private String name;
     private String category;
     private String description;
-    private String imageUrl;
+    private List<String> imageUrls;
     private Integer totalQuantity;
     private Integer availableQuantity;
     private BigDecimal pricePerUnitPerDay;

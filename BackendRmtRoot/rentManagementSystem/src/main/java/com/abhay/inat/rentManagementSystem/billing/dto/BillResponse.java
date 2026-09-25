@@ -5,6 +5,7 @@ import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @Getter
 @Builder
@@ -15,7 +16,7 @@ public class BillResponse {
     private BigDecimal amount;
     private String status;
     private String paymentReference;
-    private String paymentProofUrl;
+    private List<String> proofImageUrls;
     private Instant claimedAt;
     private Instant verifiedAt;
     private String refundReference;

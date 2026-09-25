@@ -16,8 +16,7 @@ class PropertyListScreen extends StatefulWidget {
   State<PropertyListScreen> createState() => _PropertyListScreenState();
 }
 
-class _PropertyListScreenState extends State<PropertyListScreen>
-    with RouteAware {
+class _PropertyListScreenState extends State<PropertyListScreen> with RouteAware {
   late final PropertyRepository _repository;
   late Future<List<PropertyModel>> _future;
 
@@ -61,9 +60,7 @@ class _PropertyListScreenState extends State<PropertyListScreen>
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            final message = snapshot.error is ApiException
-                ? (snapshot.error as ApiException).message
-                : 'Failed to load properties';
+            final message = snapshot.error is ApiException ? (snapshot.error as ApiException).message : 'Failed to load properties';
             return _ErrorState(message: message, onRetry: _refresh);
           }
           final properties = snapshot.data ?? [];
@@ -73,8 +70,7 @@ class _PropertyListScreenState extends State<PropertyListScreen>
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: properties.length,
-            itemBuilder: (context, index) =>
-                _PropertyCard(property: properties[index]),
+            itemBuilder: (context, index) => _PropertyCard(property: properties[index]),
           );
         },
       ),
@@ -95,9 +91,7 @@ class _PropertyCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => PropertyDetailScreen(propertyId: property.id),
-          ),
+          MaterialPageRoute(builder: (_) => PropertyDetailScreen(propertyId: property.id)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -110,22 +104,10 @@ class _PropertyCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      property.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
+                    Text(property.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     if (property.category != null) ...[
                       const SizedBox(height: 2),
-                      Text(
-                        property.category!,
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 13,
-                        ),
-                      ),
+                      Text(property.category!, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                     ],
                     const SizedBox(height: 8),
                     Text(
@@ -134,15 +116,11 @@ class _PropertyCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      outOfStock
-                          ? 'Out of stock'
-                          : '${property.availableQuantity} available',
+                      outOfStock ? 'Out of stock' : '${property.availableQuantity} available',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: outOfStock
-                            ? Colors.red.shade600
-                            : Colors.green.shade700,
+                        color: outOfStock ? Colors.red.shade600 : Colors.green.shade700,
                       ),
                     ),
                   ],
@@ -171,16 +149,9 @@ class _EmptyState extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.inventory_2_outlined,
-                  size: 48,
-                  color: Colors.grey.shade400,
-                ),
+                Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey.shade400),
                 const SizedBox(height: 12),
-                Text(
-                  'No properties available yet',
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
+                Text('No properties available yet', style: TextStyle(color: Colors.grey.shade600)),
               ],
             ),
           ),

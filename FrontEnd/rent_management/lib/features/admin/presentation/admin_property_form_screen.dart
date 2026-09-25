@@ -19,8 +19,7 @@ class AdminPropertyFormScreen extends StatefulWidget {
   const AdminPropertyFormScreen({super.key, this.existing});
 
   @override
-  State<AdminPropertyFormScreen> createState() =>
-      _AdminPropertyFormScreenState();
+  State<AdminPropertyFormScreen> createState() => _AdminPropertyFormScreenState();
 }
 
 class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
@@ -48,23 +47,14 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
   void initState() {
     super.initState();
     _repository = PropertyRepository(apiClient: context.read<ApiClient>());
-    _imageUploadService = ImageUploadService(
-      apiClient: context.read<ApiClient>(),
-    );
+    _imageUploadService = ImageUploadService(apiClient: context.read<ApiClient>());
     final p = widget.existing;
     _nameController = TextEditingController(text: p?.name ?? '');
     _categoryController = TextEditingController(text: p?.category ?? '');
     _descriptionController = TextEditingController(text: p?.description ?? '');
-    //    _imageUrlController = TextEditingController(text: p?.imageUrl ?? '');
-    _totalQuantityController = TextEditingController(
-      text: p?.totalQuantity.toString() ?? '',
-    );
-    _priceController = TextEditingController(
-      text: p?.pricePerUnitPerDay.toString() ?? '',
-    );
-    _depositController = TextEditingController(
-      text: p?.depositPerUnit.toString() ?? '',
-    );
+    _totalQuantityController = TextEditingController(text: p?.totalQuantity.toString() ?? '');
+    _priceController = TextEditingController(text: p?.pricePerUnitPerDay.toString() ?? '');
+    _depositController = TextEditingController(text: p?.depositPerUnit.toString() ?? '');
     _imageUrls = List.of(p?.imageUrls ?? []);
   }
 
@@ -102,30 +92,19 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
     );
     if (source == null) return;
 
-    final picked = await _imagePicker.pickImage(
-      source: source,
-      maxWidth: 1600,
-      imageQuality: 85,
-    );
+    final picked = await _imagePicker.pickImage(source: source, maxWidth: 1600, imageQuality: 85);
     if (picked == null) return;
 
     setState(() => _uploadingImage = true);
 
     try {
-      final uploadedUrl = await _imageUploadService.uploadPropertyImage(
-        File(picked.path),
-      );
+      final uploadedUrl = await _imageUploadService.uploadPropertyImage(File(picked.path));
       if (!mounted) return;
       setState(() => _imageUrls.add(uploadedUrl));
     } on ApiException catch (e) {
       if (!mounted) return;
-      // Deliberately not using ApiException here - this hits Supabase Storage
-      // directly, not our own backend, so DioException shapes differ.
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          backgroundColor: Colors.red.shade600,
-        ),
+        SnackBar(content: Text(e.message), backgroundColor: Colors.red.shade600),
       );
       //      setState(() => _pickedFile = null);
     } finally {
@@ -162,12 +141,7 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
       Navigator.of(context).pop(true);
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          backgroundColor: Colors.red.shade600,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message), backgroundColor: Colors.red.shade600));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -176,29 +150,20 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Property' : 'New Property'),
-      ),
+      appBar: AppBar(title: Text(_isEditing ? 'Edit Property' : 'New Property')),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            Text(
-              'Photos (${_imageUrls.length}/$_maxPropertyImages)',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
+            Text('Photos (${_imageUrls.length}/$_maxPropertyImages)', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
             SizedBox(
               height: 96,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
-                  for (int i = 0; i < _imageUrls.length; i++)
-                    _ImageThumb(
-                      url: _imageUrls[i],
-                      onRemove: () => _removeImage(i),
-                    ),
+                  for (int i = 0; i < _imageUrls.length; i++) _ImageThumb(url: _imageUrls[i], onRemove: () => _removeImage(i)),
                   if (_imageUrls.length < _maxPropertyImages)
                     GestureDetector(
                       onTap: _uploadingImage ? null : _pickAndUploadImage,
@@ -212,27 +177,13 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
                           border: Border.all(color: Colors.indigo.shade100),
                         ),
                         child: _uploadingImage
-                            ? const Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
+                            ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
                             : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(
-                                    Icons.add_a_photo_outlined,
-                                    size: 26,
-                                    color: Colors.indigo.shade300,
-                                  ),
+                                  Icon(Icons.add_a_photo_outlined, size: 26, color: Colors.indigo.shade300),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    'Add',
-                                    style: TextStyle(
-                                      color: Colors.indigo.shade300,
-                                      fontSize: 11,
-                                    ),
-                                  ),
+                                  Text('Add', style: TextStyle(color: Colors.indigo.shade300, fontSize: 11)),
                                 ],
                               ),
                       ),
@@ -243,43 +194,24 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
             const SizedBox(height: 20),
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                border: OutlineInputBorder(),
-              ),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: 14),
             TextFormField(
               controller: _categoryController,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                border: OutlineInputBorder(),
-                hintText: 'e.g. decor, seating',
-              ),
+              decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder(), hintText: 'e.g. decor, seating'),
             ),
             const SizedBox(height: 14),
             TextFormField(
               controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
               maxLines: 3,
-              //            ),
-              //            const SizedBox(height: 14),
-              //            TextFormField(
-              //              controller: _imageUrlController,
-              //              decoration: const InputDecoration(labelText: 'Image URL', border: OutlineInputBorder()),
             ),
             const SizedBox(height: 14),
             TextFormField(
               controller: _totalQuantityController,
-              decoration: const InputDecoration(
-                labelText: 'Total quantity',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Total quantity', border: OutlineInputBorder()),
               keyboardType: TextInputType.number,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Required';
@@ -291,13 +223,8 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
             const SizedBox(height: 14),
             TextFormField(
               controller: _priceController,
-              decoration: const InputDecoration(
-                labelText: 'Price per unit per day (₹)',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              decoration: const InputDecoration(labelText: 'Price per unit per day (₹)', border: OutlineInputBorder()),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Required';
                 final n = double.tryParse(v.trim());
@@ -308,13 +235,8 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
             const SizedBox(height: 14),
             TextFormField(
               controller: _depositController,
-              decoration: const InputDecoration(
-                labelText: 'Deposit per unit (₹)',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              decoration: const InputDecoration(labelText: 'Deposit per unit (₹)', border: OutlineInputBorder()),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Required';
                 final n = double.tryParse(v.trim());
@@ -331,20 +253,10 @@ class _AdminPropertyFormScreenState extends State<AdminPropertyFormScreen> {
             ],
             const SizedBox(height: 24),
             FilledButton(
-              //              onPressed: _submitting ? null : _submit,
               onPressed: (_submitting || _uploadingImage) ? null : _submit,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
+              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
               child: _submitting
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : Text(_isEditing ? 'Save Changes' : 'Create Property'),
             ),
           ],
@@ -379,10 +291,7 @@ class _ImageThumb extends StatelessWidget {
             onTap: onRemove,
             child: Container(
               padding: const EdgeInsets.all(3),
-              decoration: const BoxDecoration(
-                color: Colors.black54,
-                shape: BoxShape.circle,
-              ),
+              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
               child: const Icon(Icons.close, size: 14, color: Colors.white),
             ),
           ),

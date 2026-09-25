@@ -23,35 +23,35 @@ class PropertyModel {
     required this.active,
   });
 
-  factory PropertyModel.fromJson(Map<String, dynamic> json) => PropertyModel(
-    id: json['id'] as int,
-    name: json['name'] as String,
-    category: json['category'] as String?,
-    description: json['description'] as String?,
-    imageUrls: ((json['imageUrls'] as List?) ?? [])
-        .map((e) => e as String)
-        .toList(),
-    totalQuantity: json['totalQuantity'] as int,
-    availableQuantity: json['availableQuantity'] as int,
-    pricePerUnitPerDay: (json['pricePerUnitPerDay'] as num).toDouble(),
-    depositPerUnit: (json['depositPerUnit'] as num).toDouble(),
-    active: json['active'] as bool? ?? true,
-  );
+  // First image is the cover photo everywhere (list thumbnail, etc.) - order
+  // is whatever the backend returns (insertion order), no reordering feature.
+  String? get coverImageUrl => imageUrls.isEmpty ? null : imageUrls.first;
 
-  String? get coverImageUrl => null;
+  factory PropertyModel.fromJson(Map<String, dynamic> json) => PropertyModel(
+        id: json['id'] as int,
+        name: json['name'] as String,
+        category: json['category'] as String?,
+        description: json['description'] as String?,
+        imageUrls: ((json['imageUrls'] as List?) ?? []).map((e) => e as String).toList(),
+        totalQuantity: json['totalQuantity'] as int,
+        availableQuantity: json['availableQuantity'] as int,
+        pricePerUnitPerDay: (json['pricePerUnitPerDay'] as num).toDouble(),
+        depositPerUnit: (json['depositPerUnit'] as num).toDouble(),
+        active: json['active'] as bool? ?? true,
+      );
 
   // Used for the optimistic toggle on AdminPropertiesScreen - flips `active`
   // locally without waiting for a full re-fetch.
   PropertyModel copyWith({bool? active}) => PropertyModel(
-    id: id,
-    name: name,
-    category: category,
-    description: description,
-    imageUrls: imageUrls,
-    totalQuantity: totalQuantity,
-    availableQuantity: availableQuantity,
-    pricePerUnitPerDay: pricePerUnitPerDay,
-    depositPerUnit: depositPerUnit,
-    active: active ?? this.active,
-  );
+        id: id,
+        name: name,
+        category: category,
+        description: description,
+        imageUrls: imageUrls,
+        totalQuantity: totalQuantity,
+        availableQuantity: availableQuantity,
+        pricePerUnitPerDay: pricePerUnitPerDay,
+        depositPerUnit: depositPerUnit,
+        active: active ?? this.active,
+      );
 }

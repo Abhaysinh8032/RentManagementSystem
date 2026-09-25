@@ -152,31 +152,32 @@ class _ClaimPaymentDialogState extends State<_ClaimPaymentDialog> {
             const SizedBox(height: 12),
             Text('Screenshots (${_imageUrls.length}/$_maxClaimImages)', style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 6),
-            SizedBox(
-              height: 84,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  for (int i = 0; i < _imageUrls.length; i++) _ImageThumb(url: _imageUrls[i], onRemove: () => _removeImage(i)),
-                  if (_imageUrls.length < _maxClaimImages)
-                    GestureDetector(
-                      onTap: _uploading ? null : _pickAndUpload,
-                      child: Container(
-                        width: 76,
-                        height: 76,
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: _uploading
-                            ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-                            : Icon(Icons.add_a_photo_outlined, color: Colors.grey.shade500),
+            // Wrap, not a horizontal ListView: AlertDialog sizes its content
+            // via IntrinsicWidth internally, and a ListView's Viewport
+            // explicitly refuses to report an intrinsic size - that combo is
+            // exactly what crashed. Wrap has no Viewport, so it's immune.
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (int i = 0; i < _imageUrls.length; i++) _ImageThumb(url: _imageUrls[i], onRemove: () => _removeImage(i)),
+                if (_imageUrls.length < _maxClaimImages)
+                  GestureDetector(
+                    onTap: _uploading ? null : _pickAndUpload,
+                    child: Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
                       ),
+                      child: _uploading
+                          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                          : Icon(Icons.add_a_photo_outlined, color: Colors.grey.shade500),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
           ],
         ),
@@ -204,7 +205,6 @@ class _ImageThumb extends StatelessWidget {
         Container(
           width: 76,
           height: 76,
-          margin: const EdgeInsets.only(right: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
@@ -212,7 +212,7 @@ class _ImageThumb extends StatelessWidget {
         ),
         Positioned(
           top: 2,
-          right: 10,
+          right: 2,
           child: GestureDetector(
             onTap: onRemove,
             child: Container(
